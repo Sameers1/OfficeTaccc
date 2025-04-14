@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
@@ -33,7 +33,7 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { motion } from "framer-motion"
 import { Truck, FileText, CreditCard, FileEdit } from "lucide-react"
-import { createTask } from "@/lib/services/tasks"
+import { createTask, Task } from "@/lib/services/tasks"
 
 const TaskType = {
   Shipment: "Shipment",
@@ -90,23 +90,19 @@ type TaskFormValues = z.infer<typeof baseSchema>
 interface NewTaskDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onTaskCreated?: (task: Task) => void
 }
 
-export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
+export function NewTaskDialog({ open, onOpenChange, onTaskCreated }: NewTaskDialogProps) {
   const { toast } = useToast()
-  const [taskType, setTaskType] = useState<TaskTypeValue | null>(null)
+  const [taskType, setTaskType] = useState<TaskTypeValue>(TaskType.Custom)
 
   const form = useForm<TaskFormValues>({
-    resolver: zodResolver(
-      taskType === TaskType.Shipment ? shipmentSchema :
-      taskType === TaskType.Invoice ? invoiceSchema :
-      taskType === TaskType.Payment ? paymentSchema :
-      customSchema
-    ),
+    resolver: zodResolver(customSchema),
     defaultValues: {
       title: "",
       description: "",
-      type: taskType || TaskType.Custom,
+      type: TaskType.Custom,
       priority: "medium",
       dueDate: "",
       origin: "",
@@ -120,6 +116,22 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
       reference: "",
     },
   })
+
+  // Update form schema when taskType changes
+  useEffect(() => {
+    const newSchema = 
+      taskType === TaskType.Shipment ? shipmentSchema :
+      taskType === TaskType.Invoice ? invoiceSchema :
+      taskType === TaskType.Payment ? paymentSchema :
+      customSchema
+
+    form.reset({
+      ...form.getValues(),
+      type: taskType,
+    }, {
+      keepDefaultValues: true,
+    })
+  }, [taskType, form])
 
   const taskTypes = [
     {
@@ -159,6 +171,7 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
         status: "pending" as const,
         due_date: data.dueDate,
         assigned_to: undefined,
+        organization_id: '00000000-0000-0000-0000-000000000000', // Add default organization
         // Optional fields based on type
         origin: data.origin || undefined,
         destination: data.destination || undefined,
@@ -185,6 +198,11 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
         description: "New task created successfully.",
       })
       
+      // Call the onTaskCreated callback with the new task
+      if (onTaskCreated) {
+        onTaskCreated(createdTask)
+      }
+      
       form.reset({
         title: "",
         description: "",
@@ -201,7 +219,7 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
         paymentMethod: "Credit Card",
         reference: "",
       })
-      setTaskType(null)
+      setTaskType(TaskType.Custom)
       onOpenChange(false)
     } catch (error) {
       console.error('Error in onSubmit:', error)
@@ -214,7 +232,7 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
   }
 
   const handleBack = () => {
-    setTaskType(null)
+    setTaskType(TaskType.Custom)
     form.reset({
       title: "",
       description: "",
@@ -279,12 +297,11 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
                   <FormItem>
                     <FormLabel>Task Type</FormLabel>
                     <Select
+                      value={field.value}
                       onValueChange={(value: typeof taskType) => {
                         field.onChange(value)
                         setTaskType(value)
-                        form.reset({ type: value, priority: "medium" })
                       }}
-                      defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -368,7 +385,10 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Shipment Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select type" />
@@ -469,7 +489,10 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Payment Method</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select method" />
@@ -508,7 +531,10 @@ export function NewTaskDialog({ open, onOpenChange }: NewTaskDialogProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Priority</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select priority" />

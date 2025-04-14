@@ -13,7 +13,11 @@ interface TaskMetrics {
   lastWeekTotal: number
 }
 
-export function TaskMetrics() {
+interface TaskMetricsProps {
+  onTaskCreated?: () => void
+}
+
+export function TaskMetrics({ onTaskCreated }: TaskMetricsProps) {
   const [metrics, setMetrics] = useState<TaskMetrics>({
     total: 0,
     pending: 0,
@@ -28,10 +32,11 @@ export function TaskMetrics() {
       try {
         setLoading(true)
         
-        // Fetch all tasks
+        // Fetch tasks from the default organization
         const { data: tasks, error: tasksError } = await supabase
           .from('tasks')
           .select('status, created_at')
+          .eq('organization_id', '00000000-0000-0000-0000-000000000000')
 
         if (tasksError) throw tasksError
 
@@ -64,7 +69,7 @@ export function TaskMetrics() {
     }
 
     fetchMetrics()
-  }, [])
+  }, [onTaskCreated])
 
   if (loading) {
     return (

@@ -19,6 +19,7 @@ import { TaskDetailSidebar } from "@/components/task-detail-sidebar"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getTasks, updateTask, deleteTask, Task } from "@/lib/services/tasks"
+import { NewTaskButton } from "@/components/new-task-button"
 
 type IconMap = {
   [K in Task["type"]]: LucideIcon;
@@ -133,6 +134,7 @@ export const TaskList = memo(function TaskList({ filter }: TaskListProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [detailSidebarOpen, setDetailSidebarOpen] = useState(false)
   const { toast } = useToast()
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadTasks()
@@ -140,18 +142,22 @@ export const TaskList = memo(function TaskList({ filter }: TaskListProps) {
 
   const loadTasks = async () => {
     try {
-      const data = await getTasks()
-      setTasks(data)
-    } catch (error) {
-      console.error('Error loading tasks:', error)
-      toast({
-        title: "Error",
-        description: "Failed to load tasks. Please try again.",
-        variant: "destructive",
-      })
+      setLoading(true)
+      const tasks = await getTasks()
+      setTasks(tasks)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load tasks")
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleTaskCreated = (newTask: Task) => {
+    setTasks(prevTasks => [newTask, ...prevTasks])
+    toast({
+      title: "Success",
+      description: "Task created successfully",
+    })
   }
 
   // Filter tasks based on the selected filter
@@ -167,14 +173,19 @@ export const TaskList = memo(function TaskList({ filter }: TaskListProps) {
 
   const handleTaskUpdate = async (updatedTask: Task) => {
     try {
-      await updateTask(updatedTask.id, updatedTask)
-      setTasks(tasks.map((task: Task) => (task.id === updatedTask.id ? updatedTask : task)))
+      setTasks(prevTasks => 
+        prevTasks.map(task => task.id === updatedTask.id ? updatedTask : task)
+      )
       setSelectedTask(updatedTask)
+
+      await updateTask(updatedTask.id, updatedTask)
+      
       toast({
         title: "Success",
         description: "Task updated successfully",
       })
     } catch (error) {
+      await loadTasks()
       console.error('Error updating task:', error)
       toast({
         title: "Error",
@@ -186,15 +197,18 @@ export const TaskList = memo(function TaskList({ filter }: TaskListProps) {
 
   const handleTaskDelete = async (taskId: string) => {
     try {
-      await deleteTask(taskId)
-      setTasks(tasks.filter((task: Task) => task.id !== taskId))
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId))
       setSelectedTask(null)
       setDetailSidebarOpen(false)
+
+      await deleteTask(taskId)
+      
       toast({
         title: "Success",
         description: "Task deleted successfully",
       })
     } catch (error) {
+      await loadTasks()
       console.error('Error deleting task:', error)
       toast({
         title: "Error",
@@ -208,6 +222,8 @@ export const TaskList = memo(function TaskList({ filter }: TaskListProps) {
     return <TaskListSkeleton />
   }
 
+  if (error) return <div>Error: {error}</div>
+
   return (
     <>
       <Card className="border-none shadow-lg bg-white/50 backdrop-blur supports-[backdrop-filter]:bg-white/50">
@@ -215,6 +231,10 @@ export const TaskList = memo(function TaskList({ filter }: TaskListProps) {
           <CardTitle className="text-lg font-semibold">Task List</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">Tasks</h2>
+            <NewTaskButton onTaskCreated={handleTaskCreated} />
+          </div>
           <AnimatePresence mode="popLayout">
             {filteredTasks.length === 0 ? (
               <motion.div

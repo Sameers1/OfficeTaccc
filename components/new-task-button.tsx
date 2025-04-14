@@ -6,8 +6,13 @@ import { Plus } from "lucide-react"
 import { NewTaskDialog } from "@/components/new-task-dialog"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { Task } from "@/lib/services/tasks"
 
-export function NewTaskButton() {
+interface NewTaskButtonProps {
+  onTaskCreated?: (task: Task) => void
+}
+
+export function NewTaskButton({ onTaskCreated }: NewTaskButtonProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -30,7 +35,7 @@ export function NewTaskButton() {
           New Task
         </Button>
       </motion.div>
-      <NewTaskDialog open={open} onOpenChange={setOpen} />
+      <NewTaskDialog open={open} onOpenChange={setOpen} onTaskCreated={onTaskCreated} />
     </>
   )
 }

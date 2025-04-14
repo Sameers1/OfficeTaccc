@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense } from "react"
+import { Suspense, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowUpRight } from "lucide-react"
@@ -16,6 +16,12 @@ import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function DashboardPage() {
+  const [taskUpdateTrigger, setTaskUpdateTrigger] = useState(0)
+
+  const handleTaskCreated = () => {
+    setTaskUpdateTrigger(prev => prev + 1)
+  }
+
   return (
     <ProtectedRoute>
       <PageContainer>
@@ -28,12 +34,12 @@ export default function DashboardPage() {
             <Suspense fallback={<Skeleton className="h-10 w-40" />}>
               <TaskDistribution />
             </Suspense>
-            <NewTaskButton />
+            <NewTaskButton onTaskCreated={handleTaskCreated} />
           </div>
         </div>
 
         <Suspense fallback={<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"><Skeleton className="h-[120px]" /></div>}>
-          <TaskMetrics />
+          <TaskMetrics onTaskCreated={() => {}} />
         </Suspense>
 
         <Suspense fallback={<Card className="p-6"><Skeleton className="h-[300px]" /></Card>}>
